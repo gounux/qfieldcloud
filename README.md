@@ -34,7 +34,7 @@ For self-hosted issues, please use the GitHub issues at https://github.com/openg
 
 Clone the repository and all its submodules:
 
-    git clone --recurse-submodules git@github.com:opengisch/qfieldcloud.git
+    git clone --recurse-submodules git@github.com:opengisch/QFieldCloud.git
 
 To fetch upstream development, don't forget to update the submodules too:
 
@@ -75,6 +75,18 @@ You can check if everything seems to work correctly using the
 Now you can get started by adding the first user that would also be a super user:
 
     docker compose run app python manage.py createsuperuser --username super_user --email super@user.com
+
+### Dependencies
+
+QFieldCloud uses [`pip-compile`](https://pypi.org/project/pip-tools/) to manage it's dependencies.
+All dependencies are listed in `requirements*.in` files.
+When a `pip` a dependency is changed, the developer should produce the new `requirements*.txt` files.
+
+    docker compose run --rm pipcompile
+
+Alterantively, one can create only a `requirements.txt` file for a single `requirements.in`:
+
+    docker compose run --rm pipcompile pip-compile --no-strip-extras -o requirements/requirements_worker_wrapper.txt requirements/requirements_worker_wrapper.in
 
 ### Tests
 
@@ -220,11 +232,13 @@ Note if you run tests using the `docker-compose.test.yml` configuration, the `ap
 
 ## Add root certificate
 
-QFieldCloud will automatically generate a certificate and it's root certificate in `./docker-nginx/certs`. However, you need to trust the root certificate first, so other programs (e.g. curl) can create secure connection to the local QFieldCloud instance.
+QFieldCloud will automatically generate a certificate and its root certificate in `./conf/nginx/certs`.
+However, you need to trust the root certificate first,
+so other programs (e.g. curl) can create secure connection to the local QFieldCloud instance.
 
 On Debian/Ubuntu, copy the root certificate to the directory with trusted certificates. Note the extension has been changed to `.crt`:
 
-    sudo cp ./docker-nginx/certs/rootCA.pem /usr/local/share/ca-certificates/rootCA.crt
+    sudo cp ./conf/nginx/certs/rootCA.pem /usr/local/share/ca-certificates/rootCA.crt
 
 Trust the newly added certificate:
 
@@ -251,9 +265,9 @@ Now connecting with `curl` should fail with a similar error:
     establish a secure connection to it. To learn more about this situation and
     how to fix it, please visit the web page mentioned above.
 
-### Code style
+## Code style
 
-Code style done with precommit
+Code style done with [`precommit`](https://pre-commit.com):
 
     pip install pre-commit
     # install pre-commit hook
@@ -264,39 +278,50 @@ Code style done with precommit
 
 ### Launch a server instance
 
-Copy the `.env.example` into `.env` file and configure it to your
-desire with a good editor
+Copy the `.env.example` into `.env` file:
 
     cp .env.example .env
-    emacs .env
+    vi .env
 
-Do not forget to set DEBUG=0 and to adapt COMPOSE_FILE to not load local
-development configurations.
+Do not forget to set `DEBUG=0` and to adapt `COMPOSE_FILE` environment variable to not load local development configurations.
 
-Create the directory for qfieldcloud logs and supervisor socket file
-
-    mkdir /var/local/qfieldcloud
-
-Run and build the docker containers
+Run and build the docker containers:
 
     docker compose up -d --build
 
-Run the django database migrations
+Run the django database migrations:
 
     docker compose exec app python manage.py migrate
 
+Collect the static files:
 
-## Create or renew a certificate using Let's Encrypt
+    docker compose exec app python manage.py collectstatic
 
-If you are running the server on a server with a public domain, you can install Let's Encrypt certificate by running the following command:
+### Using certificate from Let's Encrypt
+
+By default, QFieldCloud is using a self-signed certificate. For production use you should use a valid certificate.
+
+Note you want to change the `LETSENCRYPT_EMAIL`, `LETSENCRYPT_RSA_KEY_SIZE` and `LETSENCRYPT_STAGING` variables in `.env`.
+
+On a server with a public domain, you can get a certificate issued by Let's Encrypt using certbot running the following command:
 
     ./scripts/init_letsencrypt.sh
 
-The same command can also be used to update an expired certificate.
+The certificates will be renewed automatically.
 
-Note you may want to change the `LETSENCRYPT_EMAIL`, `LETSENCRYPT_RSA_KEY_SIZE` and `LETSENCRYPT_STAGING` variables.
+To use this Let's Encrypt certificate within QFieldCloud you just need to uncomment the following lines in your `.env`:
 
-### Infrastructure
+    QFIELDCLOUD_TLS_CERT=/etc/letsencrypt/live/${QFIELDCLOUD_HOST}/fullchain.pem
+    QFIELDCLOUD_TLS_KEY=/etc/letsencrypt/live/${QFIELDCLOUD_HOST}/privkey.pem
+
+You can also use your own certificates by placing them in `conf/nginx/certs/` and changing `QFIELDCLOUD_TLS_CERT` and `QFIELDCLOUD_TLS_KEY` accordingly.
+Don't forget to create your Diffie-Hellman parameters.
+
+### Additional NGINX config
+
+You can add additional config to nginx placing files in `conf/nginx/config.d/` ending with `.conf`. They will be included in the main `nginx.conf`.
+
+## Infrastructure
 
 Based on this example
 <https://testdriven.io/blog/dockerizing-django-with-postgres-gunicorn-and-nginx/>

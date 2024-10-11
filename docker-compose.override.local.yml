@@ -17,6 +17,18 @@ services:
     depends_on:
       - db
 
+  pipcompile: &default-django
+    build:
+      context: ./docker-app
+      target: build
+      network: host
+    profiles:
+      - donotstart
+    volumes:
+      # mount the source for live reload
+      - ./docker-app/requirements:/requirements
+    command: bash -c 'for f in /requirements/*.in; do pip-compile --no-strip-extras -o "$${f%.in}.txt" "$$f"; done'
+
   worker_wrapper:
     scale: ${QFIELDCLOUD_WORKER_REPLICAS}
     build:
@@ -68,6 +80,9 @@ services:
 
   qgis:
     volumes:
+      # allow local development for `docker-qgis`
+      - ./docker-qgis/qfc_worker:/usr/src/qfc_worke:ro
+      - ./docker-qgis/entrypoint.py:/usr/src/entrypoint.py:ro
       # allow local development for `libqfieldsync` if host directory present; requires `PYTHONPATH=/libqfieldsync:${PYTHONPATH}`
       - ./docker-qgis/libqfieldsync:/libqfieldsync:ro
       # allow local development for `qfieldcloud-sdk-python` if host directory present; requires `PYTHONPATH=/qfieldcloud-sdk-python:${PYTHONPATH}`

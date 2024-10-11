@@ -29,7 +29,7 @@ RUN apt update \
 
 # Set QGIS version as in the debian repos
 # Choose your version from here: https://debian.qgis.org/debian/dists/noble/main/binary-amd64/Packages
-ARG QGIS_VERSION=1:3.38.1+40noble
+ARG QGIS_VERSION=1:3.38.3+40noble
 
 # Install QGIS dependencies
 RUN apt update \
@@ -65,7 +65,7 @@ ENV PYTHONPATH=/qfieldcloud-sdk-python:${PYTHONPATH}
 
 # Install regular dependencies that rarely change
 COPY requirements.txt /tmp/
-RUN pip3 install --break-system-packages -r /tmp/requirements.txt
+RUN pip3 install --break-system-packages --ignore-installed -r /tmp/requirements.txt
 
 # Install `libqfieldsync` dependecy since it changes more frequently compared to regular dependencies
 COPY requirements_libqfieldsync.txt /tmp/
