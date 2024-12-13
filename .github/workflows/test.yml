@@ -45,10 +45,9 @@ jobs:
           - core
           - __flaky__
     continue-on-error: true
-    # env:
-    #   CACHE_PATH: /tmp/.buildx-cache
-    #   CACHE_KEY: qfc-test-docker-${{ github.sha }}
-    #   CACHE_RESTORE_KEY: qfc-test-docker-
+    env:
+      CACHE_KEY: qfc-test-docker-${{ github.sha }}
+      CACHE_RESTORE_KEY: qfc-test-docker-
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -75,20 +74,17 @@ jobs:
           buildkitd-flags: '--allow-insecure-entitlement network.host'
           driver-opts: network=host
 
-      # - name: Load cache from GitHub Actions cache
-      #   uses: actions/cache@v3
-      #   with:
-      #     path: $CACHE_PATH
-      #     key: $CACHE_KEY
-      #     restore-keys: $CACHE_RESTORE_KEY
-
-      # - name: Build compose stack
-      #   run: docker buildx bake -f docker-compose-cache.json
-
       - name: Create local cache folders
         run: |
           mkdir -p /tmp/.buildx-cache
           mkdir -p /tmp/.buildx-cache-new
+
+      - name: Load cache from GitHub Actions cache
+        uses: actions/cache@v3
+        with:
+          path: /tmp/.buildx-cache
+          key: $CACHE_KEY
+          restore-keys: $CACHE_RESTORE_KEY
 
       - name: Build images
         uses: docker/bake-action@v5
@@ -126,11 +122,6 @@ jobs:
         run: |
           docker compose logs
 
-      # - name: Save cache to GitHub Actions cache
-      #   uses: actions/cache@v3
-      #   with:
-      #     path: $CACHE_PATH
-      #     key: $CACHE_KEY
 
       # Temp fix
       # https://github.com/docker/build-push-action/issues/252
@@ -139,6 +130,12 @@ jobs:
         run: |
           rm -rf /tmp/.buildx-cache
           mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+
+      - name: Save cache to GitHub Actions cache
+        uses: actions/cache@v3
+        with:
+          path: $CACHE_PATH
+          key: $CACHE_KEY
 
       - name: Post Google Chat message on failure
         if: failure() && matrix.django_app != '__flaky__'
