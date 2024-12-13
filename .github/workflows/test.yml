@@ -82,8 +82,10 @@ jobs:
       # - name: Build compose stack
       #   run: docker buildx bake -f docker-compose-cache.json
 
-      - name: Create local cache folder
-        run: mkdir -p /tmp/.buildx-cache
+      - name: Create local cache folders
+        run: |
+          mkdir -p /tmp/.buildx-cache
+          mkdir -p /tmp/.buildx-cache-new
 
       - name: Build images
         uses: docker/bake-action@v5
