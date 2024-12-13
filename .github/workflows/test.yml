@@ -45,6 +45,10 @@ jobs:
           - core
           - __flaky__
     continue-on-error: true
+    # env:
+    #   CACHE_PATH: /tmp/.buildx-cache
+    #   CACHE_KEY: qfc-test-docker-${{ github.sha }}
+    #   CACHE_RESTORE_KEY: qfc-test-docker-
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -64,9 +68,32 @@ jobs:
       - name: Pull docker containers
         run: docker compose pull
 
-      - name: Build and run docker containers
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v2
+
+      # - name: Load cache from GitHub Actions cache
+      #   uses: actions/cache@v3
+      #   with:
+      #     path: $CACHE_PATH
+      #     key: $CACHE_KEY
+      #     restore-keys: $CACHE_RESTORE_KEY
+
+      # - name: Build compose stack
+      #   run: docker buildx bake -f docker-compose-cache.json
+
+      - name: Build images
+        uses: docker/bake-action@v5
+        with:
+          push: false
+          load: true
+        set: |
+            web.cache-from=type=gha
+            web.cache-to=type=gha
+
+      - name: Run docker containers
         run: |
-          docker compose up -d --build
+          docker compose up -d
 
       - name: Initial manage.py commands
         run: |
@@ -88,6 +115,12 @@ jobs:
         if: failure()
         run: |
           docker compose logs
+
+      # - name: Save cache to GitHub Actions cache
+      #   uses: actions/cache@v3
+      #   with:
+      #     path: $CACHE_PATH
+      #     key: $CACHE_KEY
 
       - name: Post Google Chat message on failure
         if: failure() && matrix.django_app != '__flaky__'
