@@ -87,9 +87,9 @@ jobs:
         with:
           push: false
           load: true
-        set: |
-            *.cache-from=type=local,src=/tmp/.buildx-cache
-            *.cache-to=type=local,mode=max,dest=/tmp/.buildx-cache-new
+          set: |
+              *.cache-from=type=local,src=/tmp/.buildx-cache
+              *.cache-to=type=local,mode=max,dest=/tmp/.buildx-cache-new
 
       - name: Run docker containers
         run: |
